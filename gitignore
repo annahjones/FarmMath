@@ -1,0 +1,14 @@
+Agritech-Market-Match-Platform/
+├── README.md
+├── sql/
+│   ├── schema.sql
+│   ├── sample_data.sql
+│   └── triggers.sql
+├── backend/
+│   └── notify_new_produce_edge_function.js
+├── frontend/
+│   ├── index.html
+│   ├── app.js
+│   └── styles.css
+├── .gitignore
+└── LICENSE
