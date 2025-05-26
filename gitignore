@@ -8,7 +8,5 @@ Agritech-Market-Match-Platform/
 │   └── notify_new_produce_edge_function.js
 ├── frontend/
 │   ├── index.html
-│   ├── app.js
-│   └── styles.css
 ├── .gitignore
 └── LICENSE
