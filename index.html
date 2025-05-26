@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Market Match - Post Your Produce</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      border-radius: 10px;
+      background-color: #fff;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2, h3 {
+      text-align: center;
+      color: #4b0082;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      background-color: #4b0082;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #36005f;
+    }
+    .message {
+      margin-top: 15px;
+      text-align: center;
+      font-weight: bold;
+    }
+    #marketPrices {
+      margin-top: 40px;
+    }
+    #marketPrices ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    #marketPrices li {
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+    }
+    /* New Markets section styles */
+    #marketsSection {
+      margin-top: 40px;
+    }
+    #marketsSection ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    #marketsSection li {
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Market Match: Post Your Produce</h2>
+
+  <label for="farmerName">Farmer Name:</label>
+  <input id="farmerName" type="text" placeholder="Your Name" required />
+
+  <label for="phone">Phone Number:</label>
+  <input id="phone" type="text" placeholder="e.g. 0712345678" required />
+
+  <label for="location">Location:</label>
+  <input id="location" type="text" placeholder="Your Location" required />
+
+  <label for="crop">Crop:</label>
+  <input id="crop" type="text" placeholder="Enter crop name" required />
+
+  <label for="quantity">Quantity (kg):</label>
+  <input id="quantity" type="number" min="0" step="0.1" placeholder="Quantity in kilograms" required />
+
+  <label for="price">Expected Price (KES/kg):</label>
+  <input id="price" type="number" min="0" step="0.01" placeholder="Expected price per kg" required />
+
+  <button id="postProduceBtn">Post Produce</button>
+
+  <div class="message" id="message"></div>
+
+  <!-- Existing Market Prices section -->
+  <div id="marketPrices">
+    <h3>Market Prices</h3>
+    <div id="pricesList">Loading market prices...</div>
+  </div>
+
+  <!-- New Markets section -->
+  <div id="marketsSection">
+    <h3>Nearby Markets & Their Crop Prices</h3>
+    <div id="marketsList">Loading markets...</div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+    const SUPABASE_URL = 'https://vpazlmbbbnckqyfizael.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwYXpsbWJiYm5ja3F5Zml6YWVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgyNDk0MjEsImV4cCI6MjA2MzgyNTQyMX0.w1Zf3shLUam4Q7aq9idVRG6oladXjt96Ybbhd0OEkyY';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Post produce button handler
+    document.getElementById('postProduceBtn').addEventListener('click', postProduce);
+
+    async function postProduce() {
+      const messageBox = document.getElementById('message');
+      messageBox.textContent = '';
+      messageBox.style.color = 'black';
+
+      const name = document.getElementById('farmerName').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const location = document.getElementById('location').value.trim();
+      const cropName = document.getElementById('crop').value.trim();
+      const quantity = parseFloat(document.getElementById('quantity').value);
+      const expected_price = parseFloat(document.getElementById('price').value);
+
+      if (!name || !phone || !location || !cropName || isNaN(quantity) || isNaN(expected_price)) {
+        messageBox.textContent = 'Please fill in all fields correctly.';
+        messageBox.style.color = 'red';
+        return;
+      }
+
+      messageBox.textContent = 'Submitting...';
+
+      try {
+        // Check if farmer exists
+        let { data: existingFarmers, error: fetchError } = await supabase
+          .from('farmers')
+          .select('id')
+          .eq('phone', phone);
+
+        if (fetchError) throw fetchError;
+
+        let farmer_id;
+
+        if (existingFarmers.length === 0) {
+          // Insert new farmer
+          const { data: newFarmer, error: insertError } = await supabase
+            .from('farmers')
+            .insert({ name, phone, location })
+            .select()
+            .single();
+
+          if (insertError) throw insertError;
+
+          farmer_id = newFarmer.id;
+        } else {
+          farmer_id = existingFarmers[0].id;
+        }
+
+        // Check if crop exists
+        let { data: existingCrops, error: cropFetchError } = await supabase
+          .from('crops')
+          .select('id')
+          .ilike('name', cropName);
+
+        if (cropFetchError) throw cropFetchError;
+
+        let crop_id;
+
+        if (!existingCrops || existingCrops.length === 0) {
+          // Insert new crop
+          const { data: newCrop, error: cropInsertError } = await supabase
+            .from('crops')
+            .insert({ name: cropName })
+            .select()
+            .single();
+
+          if (cropInsertError) throw cropInsertError;
+
+          crop_id = newCrop.id;
+        } else {
+          crop_id = existingCrops[0].id;
+        }
+
+        // Insert produce post
+        const { error: produceError } = await supabase
+          .from('produce_posts')
+          .insert({
+            farmer_id,
+            crop_id,
+            quantity,
+            expected_price,
+            location
+          });
+
+        if (produceError) throw produceError;
+
+        messageBox.textContent = '✅ Produce posted successfully!';
+        messageBox.style.color = 'green';
+
+        // Clear inputs
+        document.getElementById('farmerName').value = '';
+        document.getElementById('phone').value = '';
+        document.getElementById('location').value = '';
+        document.getElementById('crop').value = '';
+        document.getElementById('quantity').value = '';
+        document.getElementById('price').value = '';
+
+        // Refresh market prices and markets after posting
+        showMarketPrices();
+        showMarketsAndPrices();
+
+      } catch (error) {
+        console.error(error);
+        messageBox.textContent = '❌ Error: ' + error.message;
+        messageBox.style.color = 'red';
+      }
+    }
+
+    // Show market prices in the existing marketPrices section
+    async function showMarketPrices() {
+      const pricesList = document.getElementById('pricesList');
+      pricesList.textContent = 'Loading market prices...';
+
+      // Query market_prices joined with markets and crops for names
+      const { data, error } = await supabase
+        .from('market_prices')
+        .select(`
+          price,
+          date,
+          market:markets(name),
+          crop:crops(name)
+        `)
+        .order('date', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        pricesList.textContent = 'Error loading market prices.';
+        console.error(error);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        pricesList.textContent = 'No market prices available.';
+        return;
+      }
+
+      // Build HTML list
+      let html = '<ul>';
+      data.forEach(item => {
+        html += `<li><strong>${item.market?.name || 'Unknown Market'}</strong> - ${item.crop?.name || 'Unknown Crop'}: KES ${item.price} (on ${item.date.substring(0,10)})</li>`;
+      });
+      html += '</ul>';
+      pricesList.innerHTML = html;
+    }
+
+    // Show all markets with their latest crop prices in the marketsSection
+    async function showMarketsAndPrices() {
+      const marketsList = document.getElementById('marketsList');
+      marketsList.textContent = 'Loading markets...';
+
+      // Fetch markets and latest prices for crops in each market
+      const { data: markets, error: marketsError } = await supabase
+        .from('markets')
+        .select('id, name')
+        .order('name');
+
+      if (marketsError) {
+        marketsList.textContent = 'Error loading markets.';
+        console.error(marketsError);
+        return;
+      }
+
+      if (!markets || markets.length === 0) {
+        marketsList.textContent = 'No markets available.';
+        return;
+      }
+
+      // For each market, get latest prices of crops
+      let html = '<ul>';
+      for (const market of markets) {
+        // Get latest prices for this market
+        const { data: prices, error: pricesError } = await supabase
+          .from('market_prices')
+          .select(`
+            price,
+            crop:crops(name),
+            date
+          `)
+          .eq('market_id', market.id)
+          .order('date', { ascending: false })
+          .limit(5);
+
+        if (pricesError) {
+          console.error(pricesError);
+          continue;
+        }
+
+        html += `<li><strong>${market.name}</strong><ul>`;
+        if (prices && prices.length > 0) {
+          prices.forEach(priceEntry => {
+            html += `<li>${priceEntry.crop?.name || 'Unknown Crop'}: KES ${priceEntry.price} (on ${priceEntry.date.substring(0,10)})</li>`;
+          });
+        } else {
+          html += '<li>No prices available</li>';
+        }
+        html += '</ul></li>';
+      }
+      html += '</ul>';
+
+      marketsList.innerHTML = html;
+    }
+
+    // Load initial data on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      showMarketPrices();
+      showMarketsAndPrices();
+    });
+  </script>
+
+</body>
+</html>
