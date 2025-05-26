@@ -1,0 +1,1 @@
+INSERT INTO "public"."alerts" ("id", "farmer_id", "message", "sent_at") VALUES ('d2c6f7eb-9dbd-4d00-bd5e-137a2869e9fa', '0d2ccaf1-b086-45a7-b2a3-dc3498c22de2', 'New produce posted!', '2025-05-26 13:14:39.462241+00');

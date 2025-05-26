@@ -1,0 +1,1 @@
+INSERT INTO "public"."crops" ("id", "name") VALUES ('1', 'Maize'), ('2', 'Beans'), ('3', 'Wheat'), ('4', 'Rice'), ('5', 'Tomatoes');
